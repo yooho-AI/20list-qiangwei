@@ -1,6 +1,6 @@
 /**
  * [INPUT]: store.ts (useGameStore, ENDINGS), analytics, bgm
- * [OUTPUT]: Root component: 3-phase opening (awakening -> letter -> name) + GameScreen + EndingModal + MenuOverlay
+ * [OUTPUT]: Root component: 3-phase opening (awakening -> letter -> name) + GameScreen + EndingModal
  * [POS]: App entry point, no isMobile branching. Fixed female protagonist.
  * [PROTOCOL]: Update this header on change, then check CLAUDE.md
  */
@@ -24,32 +24,6 @@ const ENDING_TYPE_MAP: Record<string, { label: string; color: string; icon: stri
   NE: { label: 'Normal Ending', color: '#94a3b8', icon: '🌙' },
 }
 
-// ── Floating Particles ──
-function FloatingParticles({ count = 20 }: { count?: number }) {
-  const particles = useMemo(() => Array.from({ length: count }, (_, i) => ({
-    id: i,
-    left: `${Math.random() * 100}%`,
-    delay: Math.random() * 5,
-    duration: 4 + Math.random() * 4,
-    size: 2 + Math.random() * 4,
-    opacity: 0.3 + Math.random() * 0.5,
-  })), [count])
-
-  return (
-    <div className={`${P}-particles`}>
-      {particles.map((p) => (
-        <motion.div
-          key={p.id}
-          className={`${P}-particle`}
-          style={{ left: p.left, width: p.size, height: p.size, opacity: 0 }}
-          animate={{ y: [0, -120 - Math.random() * 80], opacity: [0, p.opacity, 0] }}
-          transition={{ duration: p.duration, delay: p.delay, repeat: Infinity, ease: 'easeOut' }}
-        />
-      ))}
-    </div>
-  )
-}
-
 // ── Start Screen (3-phase opening) ──
 function StartScreen() {
   const { setPlayerInfo, initGame, loadGame, hasSave } = useGameStore()
@@ -58,6 +32,14 @@ function StartScreen() {
   const [phase, setPhase] = useState<'awaken' | 'letter' | 'name'>('awaken')
   const [name, setName] = useState('苏念')
   const [awakenStep, setAwakenStep] = useState(0)
+
+  // CSS-animated particles
+  const particles = useMemo(() => Array.from({ length: 20 }, (_, i) => ({
+    id: i,
+    left: `${Math.random() * 100}%`,
+    delay: `${Math.random() * 5}s`,
+    duration: `${4 + Math.random() * 6}s`,
+  })), [])
 
   // Phase 1: timed awakening sequence
   useEffect(() => {
@@ -87,12 +69,19 @@ function StartScreen() {
   return (
     <div className={`${P}-start`}>
       <AnimatePresence mode="wait">
-        {/* ── Phase 1: Awakening ── */}
+        {/* ── Phase 1: 黑屏苏醒 ── */}
         {phase === 'awaken' && (
-          <motion.div key="awaken" className={`${P}-awaken-scene`}
+          <motion.div key="awaken" className={`${P}-awaken`}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.8 }}>
-            <FloatingParticles count={24} />
+            <div className={`${P}-vignette`} />
+            <div className={`${P}-rose-silhouette`}>
+              <svg viewBox="0 0 100 100"><text y=".9em" fontSize="90">🥀</text></svg>
+            </div>
+            {particles.map((p) => (
+              <div key={p.id} className={`${P}-particle`}
+                style={{ left: p.left, animationDelay: p.delay, animationDuration: p.duration }} />
+            ))}
             <AnimatePresence>
               {awakenStep >= 1 && (
                 <motion.p className={`${P}-awaken-text`}
@@ -102,46 +91,55 @@ function StartScreen() {
               )}
             </AnimatePresence>
             <AnimatePresence>
+              {awakenStep >= 1 && (
+                <motion.p className={`${P}-awaken-text-dim`}
+                  initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1.5, delay: 1 }}>
+                  头很沉...嘴里有残留的甜腻味道...
+                </motion.p>
+              )}
+            </AnimatePresence>
+            <AnimatePresence>
               {awakenStep >= 2 && (
-                <motion.div className={`${P}-awaken-title`}
+                <motion.div
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 1.2 }}>
-                  <h1 className={`${P}-title`}>蔷薇牢笼</h1>
-                  <p className={`${P}-subtitle`}>被囚禁的第三十天</p>
+                  <h1 className={`${P}-awaken-title`}>蔷薇牢笼</h1>
+                  <p className={`${P}-awaken-subtitle`}>被囚禁的第三十天</p>
                 </motion.div>
               )}
             </AnimatePresence>
             <AnimatePresence>
               {awakenStep >= 3 && (
-                <motion.div className={`${P}-start-cta`}
+                <motion.div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
                   initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.6 }}>
-                  <button className={`${P}-start-btn`} onClick={handleStart}>睁开眼</button>
+                  <button className={`${P}-start-cta`} onClick={handleStart}>睁开眼</button>
                   {saved && (
                     <button className={`${P}-continue-btn`} onClick={handleContinue}>继续上次</button>
                   )}
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className={`${P}-music-bar`} onClick={toggleBgm}>
-              <span>♪</span>
-              <span>{isPlaying ? '播放中' : '点击播放'}</span>
+            <div className={`${P}-music-bar ${!isPlaying ? 'paused' : ''}`} onClick={toggleBgm}>
+              <span /><span /><span /><span />
             </div>
           </motion.div>
         )}
 
-        {/* ── Phase 2: Letter / Note ── */}
+        {/* ── Phase 2: 诡异字条 ── */}
         {phase === 'letter' && (
-          <motion.div key="letter" className={`${P}-letter-scene`}
+          <motion.div key="letter" className={`${P}-letter`}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.8 }}>
-            <FloatingParticles count={12} />
-            <motion.div className={`${P}-letter-card`}
-              initial={{ opacity: 0, scale: 0.92, rotateX: 8 }}
-              animate={{ opacity: 1, scale: 1, rotateX: 0 }}
+            <div className={`${P}-letter-vignette`} />
+            <div className={`${P}-ink-blot`} style={{ top: '30%', left: '20%' }} />
+            <div className={`${P}-ink-blot`} style={{ top: '60%', right: '15%', animationDelay: '2s' }} />
+            <motion.div className={`${P}-letter-note`}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 1.0 }}>
               <div className={`${P}-letter-text`}>别怕，哥哥们会照顾好你的。</div>
-              <div className={`${P}-letter-ornament`} />
+              <div className={`${P}-letter-signature`}>—— 你的三位哥哥</div>
             </motion.div>
             <motion.button className={`${P}-skip-btn`}
               onClick={() => setPhase('name')}
@@ -151,24 +149,32 @@ function StartScreen() {
           </motion.div>
         )}
 
-        {/* ── Phase 3: Name Input ── */}
+        {/* ── Phase 3: 姓名输入 ── */}
         {phase === 'name' && (
-          <motion.div key="name" className={`${P}-name-scene`}
+          <motion.div key="name" className={`${P}-create`}
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}>
-            <FloatingParticles count={8} />
-            <motion.div className={`${P}-name-form`}
+            <div className={`${P}-create-bars`}>
+              <span /><span /><span /><span /><span />
+            </div>
+            <motion.div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}
               initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3, duration: 0.6 }}>
-              <div className={`${P}-name-label`}>你的名字</div>
-              <input className={`${P}-name-input`} type="text" value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="输入角色名" maxLength={8} autoFocus />
-              <div className={`${P}-name-hint`}>默认：苏念</div>
-              <div className={`${P}-name-actions`}>
-                <button className={`${P}-start-btn`} onClick={handleBegin}>醒来</button>
-                <button className={`${P}-continue-btn`} onClick={() => setPhase('awaken')}>返回</button>
+              <div className={`${P}-create-title`}>你是谁？</div>
+              <div className={`${P}-create-desc`}>
+                你从昏迷中醒来，发现自己身处一座陌生的别墅。<br />
+                记忆模糊，只记得自己的名字...
               </div>
+              <div className={`${P}-create-label`}>输入角色名</div>
+              <input className={`${P}-create-input`} type="text" value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="苏念" maxLength={8} autoFocus />
+              <button className={`${P}-create-random`} onClick={() => setPhase('awaken')}>
+                ← 返回
+              </button>
+              <button className={`${P}-create-start`} onClick={handleBegin} disabled={!name.trim()}>
+                醒来
+              </button>
             </motion.div>
           </motion.div>
         )}
@@ -208,7 +214,7 @@ function EndingModal() {
             {ending.description}
           </p>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button className={`${P}-start-btn`} onClick={() => { clearSave(); resetGame() }} style={{ fontSize: 13 }}>
+            <button className={`${P}-create-start`} onClick={() => { clearSave(); resetGame() }} style={{ fontSize: 13, padding: '10px 24px' }}>
               返回标题
             </button>
             <button className={`${P}-continue-btn`} onClick={() => useGameStore.setState({ endingType: null })} style={{ fontSize: 13 }}>

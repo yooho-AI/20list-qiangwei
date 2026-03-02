@@ -1,7 +1,7 @@
 /**
  * [INPUT]: store.ts (useGameStore)
- * [OUTPUT]: 囚笼手记抽屉 — 扉页 + 好感速览 + 场景网格 + 目标 + 属性 + 背包
- * [POS]: 左侧滑入抽屉，Reorder 拖拽排序
+ * [OUTPUT]: 囚笼手记 — 扉页 + 好感速览 + 场景网格 + 目标 + 属性 + 背包
+ * [POS]: 手册Tab内容，Reorder 拖拽排序
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 

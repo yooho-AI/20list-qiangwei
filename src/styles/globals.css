@@ -158,17 +158,18 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 6px 12px;
+  gap: 3px;
+  padding: 6px 8px;
   background: transparent;
   border: none;
   color: var(--text-muted);
   font-size: 10px;
   cursor: pointer;
   position: relative;
-  transition: color 0.2s;
+  transition: color 0.3s;
 }
-.qw-tab-item span:first-child { font-size: 20px; }
+.qw-tab-item span:first-child { font-size: 20px; transition: filter 0.3s; }
+.qw-tab-active span:first-child { filter: drop-shadow(0 0 6px rgba(var(--primary-rgb), 0.5)); }
 
 .qw-tab-active { color: var(--primary); }
 .qw-tab-active::after {

@@ -1,11 +1,11 @@
 /**
  * [INPUT]: store.ts (useGameStore), tab components, dashboard, bgm
- * [OUTPUT]: 唯一布局壳 — Header + TabContent + TabBar + 三向手势 + 抽屉
- * [POS]: components/game 的布局入口，零 isMobile 分叉
+ * [OUTPUT]: 唯一布局壳 — Header + 5Tab路由 + TabBar + 菜单
+ * [POS]: components/game 的布局入口，零 isMobile 分叉，5Tab导航
  * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
  */
 
-import { useRef, useCallback, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   useGameStore, PERIODS, STORY_INFO,
@@ -13,7 +13,7 @@ import {
 } from '../../lib/store'
 import { useBgm } from '../../lib/bgm'
 import {
-  ChatCircle, MapPin, Users,
+  ChatCircle, MapTrifold, Users,
   Notebook, Scroll, MusicNotes, SpeakerSimpleSlash,
   List, FloppyDisk, FolderOpen, ArrowClockwise, Play,
   Lightning, NoteBlank,
@@ -25,18 +25,20 @@ import DashboardDrawer from './dashboard-drawer'
 
 const P = 'qw'
 
-const TAB_CONFIG = [
-  { key: 'dialogue', label: '对话', icon: <ChatCircle size={22} /> },
-  { key: 'scene', label: '场景', icon: <MapPin size={22} /> },
-  { key: 'character', label: '人物', icon: <Users size={22} /> },
-] as const
+type TabKey = 'dashboard' | 'scene' | 'dialogue' | 'character' | 'records'
+
+const TAB_CONFIG: Array<{ key: TabKey; label: string; Icon: typeof Notebook }> = [
+  { key: 'dashboard', label: '手册', Icon: Notebook },
+  { key: 'scene', label: '场景', Icon: MapTrifold },
+  { key: 'dialogue', label: '对话', Icon: ChatCircle },
+  { key: 'character', label: '人物', Icon: Users },
+  { key: 'records', label: '事件', Icon: Scroll },
+]
 
 export default function AppShell() {
   const {
     activeTab, setActiveTab,
     currentDay, currentPeriodIndex, actionPoints,
-    showDashboard, toggleDashboard,
-    showRecords, toggleRecords,
     showMenu, toggleMenu,
     saveGame,
     storyRecords,
@@ -53,20 +55,6 @@ export default function AppShell() {
     setToast(msg)
     setTimeout(() => setToast(''), 2000)
   }, [])
-
-  // Three-way gesture
-  const touchRef = useRef({ x: 0, y: 0 })
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
-  }, [])
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    const dx = e.changedTouches[0].clientX - touchRef.current.x
-    const dy = Math.abs(e.changedTouches[0].clientY - touchRef.current.y)
-    if (Math.abs(dx) > 60 && dy < Math.abs(dx) * 1.5) {
-      if (dx > 0) toggleDashboard()
-      else toggleRecords()
-    }
-  }, [toggleDashboard, toggleRecords])
 
   // Menu actions
   const handleSave = useCallback(() => {
@@ -90,9 +78,6 @@ export default function AppShell() {
       {/* Header */}
       <header className={`${P}-header`}>
         <div className={`${P}-header-left`}>
-          <button className={`${P}-header-btn`} onClick={toggleDashboard} title="手帐">
-            <Notebook size={18} />
-          </button>
           <span className={`${P}-ap-badge`}><Lightning size={13} weight="fill" /> {actionPoints}</span>
         </div>
         <div className={`${P}-header-center`}>
@@ -112,114 +97,49 @@ export default function AppShell() {
           <button className={`${P}-header-btn`} onClick={toggleMenu} title="菜单">
             <List size={18} />
           </button>
-          <button className={`${P}-header-btn`} onClick={toggleRecords} title="事件记录">
-            <Scroll size={18} />
-          </button>
         </div>
       </header>
 
       {/* Tab Content */}
-      <div
-        style={{ flex: 1, overflow: 'hidden', position: 'relative' }}
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-      >
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
         <AnimatePresence mode="wait">
-          {activeTab === 'dialogue' && (
-            <motion.div
-              key="dialogue"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0 }}
+          {activeTab === 'dashboard' && (
+            <motion.div key="dashboard"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              style={{ height: '100%' }}
-            >
-              <TabDialogue />
+              style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+              <DashboardDrawer />
             </motion.div>
           )}
           {activeTab === 'scene' && (
-            <motion.div
-              key="scene"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0 }}
+            <motion.div key="scene"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              style={{ height: '100%' }}
-            >
+              style={{ height: '100%', overflowY: 'auto' }}>
               <TabScene />
             </motion.div>
           )}
-          {activeTab === 'character' && (
-            <motion.div
-              key="character"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0 }}
+          {activeTab === 'dialogue' && (
+            <motion.div key="dialogue"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              style={{ height: '100%' }}
-            >
+              style={{ height: '100%' }}>
+              <TabDialogue />
+            </motion.div>
+          )}
+          {activeTab === 'character' && (
+            <motion.div key="character"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              style={{ height: '100%', overflowY: 'auto' }}>
               <TabCharacter />
             </motion.div>
           )}
-        </AnimatePresence>
-      </div>
-
-      {/* Tab Bar */}
-      <nav className={`${P}-tab-bar`}>
-        {TAB_CONFIG.map((tab) => (
-          <button
-            key={tab.key}
-            className={`${P}-tab-item ${activeTab === tab.key ? `${P}-tab-active` : ''}`}
-            onClick={() => setActiveTab(tab.key)}
-          >
-            {tab.icon}
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </nav>
-
-      {/* Dashboard Drawer (left) */}
-      <AnimatePresence>
-        {showDashboard && (
-          <motion.div
-            className={`${P}-dash-overlay`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={toggleDashboard}
-          >
-            <motion.div
-              className={`${P}-dash-drawer`}
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <DashboardDrawer />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Record Sheet (right) */}
-      <AnimatePresence>
-        {showRecords && (
-          <motion.div
-            className={`${P}-record-overlay`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={toggleRecords}
-          >
-            <motion.div
-              className={`${P}-record-sheet`}
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-              onClick={(e) => e.stopPropagation()}
-            >
+          {activeTab === 'records' && (
+            <motion.div key="records"
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              style={{ height: '100%', overflowY: 'auto', padding: '20px 16px' }}>
               <div className={`${P}-record-title`}><Scroll size={16} /> 事件记录</div>
               <div className={`${P}-record-timeline`}>
                 {[...storyRecords].reverse().map((rec) => (
@@ -242,9 +162,23 @@ export default function AppShell() {
                 )}
               </div>
             </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Tab Bar — 5 tabs */}
+      <nav className={`${P}-tab-bar`}>
+        {TAB_CONFIG.map((tab) => (
+          <button
+            key={tab.key}
+            className={`${P}-tab-item ${activeTab === tab.key ? `${P}-tab-active` : ''}`}
+            onClick={() => setActiveTab(tab.key)}
+          >
+            <tab.Icon size={20} weight={activeTab === tab.key ? 'fill' : 'regular'} />
+            <span>{tab.label}</span>
+          </button>
+        ))}
+      </nav>
 
       {/* Menu Overlay */}
       <AnimatePresence>

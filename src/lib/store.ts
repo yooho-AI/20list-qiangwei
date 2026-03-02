@@ -54,9 +54,7 @@ interface GameState {
 
   endingType: string | null
 
-  activeTab: 'dialogue' | 'scene' | 'character'
-  showDashboard: boolean
-  showRecords: boolean
+  activeTab: 'dashboard' | 'scene' | 'dialogue' | 'character' | 'records'
   showMenu: boolean
   storyRecords: StoryRecord[]
 }
@@ -66,9 +64,7 @@ interface GameActions {
   initGame: () => void
   selectCharacter: (charId: string | null) => void
   selectScene: (sceneId: string) => void
-  setActiveTab: (tab: 'dialogue' | 'scene' | 'character') => void
-  toggleDashboard: () => void
-  toggleRecords: () => void
+  setActiveTab: (tab: 'dashboard' | 'scene' | 'dialogue' | 'character' | 'records') => void
   toggleMenu: () => void
   sendMessage: (text: string) => Promise<void>
   advanceTime: () => void
@@ -267,8 +263,6 @@ export const useGameStore = create<GameStore>()(
     endingType: null,
 
     activeTab: 'dialogue',
-    showDashboard: false,
-    showRecords: false,
     showMenu: false,
     storyRecords: [],
 
@@ -319,20 +313,6 @@ export const useGameStore = create<GameStore>()(
 
     setActiveTab: (tab) => {
       set((s) => { s.activeTab = tab })
-    },
-
-    toggleDashboard: () => {
-      set((s) => {
-        s.showDashboard = !s.showDashboard
-        if (s.showDashboard) s.showRecords = false
-      })
-    },
-
-    toggleRecords: () => {
-      set((s) => {
-        s.showRecords = !s.showRecords
-        if (s.showRecords) s.showDashboard = false
-      })
     },
 
     toggleMenu: () => {
@@ -674,8 +654,6 @@ export const useGameStore = create<GameStore>()(
         s.choices = []
         s.endingType = null
         s.activeTab = 'dialogue'
-        s.showDashboard = false
-        s.showRecords = false
         s.showMenu = false
         s.storyRecords = []
       })
