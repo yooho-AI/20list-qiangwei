@@ -1,0 +1,320 @@
+/**
+ * [INPUT]: store.ts (useGameStore, ITEMS, SCENES, STORY_INFO)
+ * [OUTPUT]: 对话Tab — 富消息路由 + 可折叠选项面板 + 输入区 + 背包底栏
+ * [POS]: 三Tab之一，AppShell 路由渲染
+ * [PROTOCOL]: 变更时更新此头部，然后检查 CLAUDE.md
+ */
+import { useRef, useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useGameStore, ITEMS, SCENES, STORY_INFO } from '../../lib/store'
+import { parseStoryParagraph } from '../../lib/parser'
+import { Backpack, PaperPlaneRight, Gift, GameController, CaretUp, CaretDown } from '@phosphor-icons/react'
+
+const P = 'qw'
+
+// ── Scene Transition Card ──
+function SceneTransitionCard({ sceneId }: { sceneId?: string }) {
+  const scene = sceneId ? SCENES[sceneId] : null
+  if (!scene) return null
+  return (
+    <motion.div
+      className={`${P}-scene-card`}
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <motion.img
+        className={`${P}-scene-card-bg`}
+        src={scene.background}
+        alt={scene.name}
+        animate={{ scale: [1, 1.05] }}
+        transition={{ duration: 8, ease: 'linear' }}
+        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+      />
+      <div className={`${P}-scene-card-mask`} />
+      <div className={`${P}-scene-card-content`}>
+        <div className={`${P}-scene-card-badge`}>{scene.icon} 场景切换</div>
+        <div className={`${P}-scene-card-name`}>{scene.name}</div>
+        <div className={`${P}-scene-card-desc`}>{scene.atmosphere}</div>
+      </div>
+    </motion.div>
+  )
+}
+
+// ── Day Change Card ──
+function DayCard({ day, chapter }: { day: number; chapter: string }) {
+  const chars = chapter.split('')
+  return (
+    <motion.div
+      className={`${P}-day-card`}
+      initial={{ opacity: 0, y: -40, rotate: -5 }}
+      animate={{ opacity: 1, y: 0, rotate: 0 }}
+      transition={{ type: 'spring', damping: 18, stiffness: 200 }}
+    >
+      <div className={`${P}-day-card-top`} />
+      <div className={`${P}-day-card-number`}>第{day}天</div>
+      <div className={`${P}-day-card-label`}>DAY {day}</div>
+      <div className={`${P}-day-card-chapter`}>
+        {chars.map((ch, i) => (
+          <span key={i} className={`${P}TypeIn`} style={{ animationDelay: `${i * 0.08}s` }}>
+            {ch}
+          </span>
+        ))}
+      </div>
+    </motion.div>
+  )
+}
+
+// ── Message Bubble ──
+function MessageBubble({ msg }: { msg: { id: string; role: string; content: string; character?: string; type?: string; sceneId?: string; dayInfo?: { day: number; chapter: string } } }) {
+  const { characters } = useGameStore()
+
+  if (msg.type === 'scene-transition') return <SceneTransitionCard sceneId={msg.sceneId} />
+  if (msg.type === 'day-change' && msg.dayInfo) return <DayCard day={msg.dayInfo.day} chapter={msg.dayInfo.chapter} />
+  if (msg.role === 'system') return <div className={`${P}-bubble-system`}>{msg.content}</div>
+  if (msg.role === 'user') return <div className={`${P}-bubble-player`}>{msg.content}</div>
+
+  // NPC (assistant) message
+  const { narrative, statHtml, charColor } = parseStoryParagraph(msg.content)
+  const char = msg.character ? characters[msg.character] : null
+  return (
+    <div className={`${P}-avatar-row`}>
+      {char && (
+        <img
+          className={`${P}-npc-avatar`}
+          src={char.portrait}
+          alt={char.name}
+          style={{ borderColor: char.themeColor }}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+        />
+      )}
+      <div style={{ flex: 1 }}>
+        {char && (
+          <div className={`${P}-npc-name`} style={{ color: char.themeColor }}>{char.name}</div>
+        )}
+        <div
+          className={`${P}-bubble-npc`}
+          style={charColor ? { borderLeftColor: charColor } : undefined}
+        >
+          <div dangerouslySetInnerHTML={{ __html: narrative }} />
+          {statHtml && <div dangerouslySetInnerHTML={{ __html: statHtml }} />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Inventory Sheet ──
+function InventorySheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { inventory, useItem } = useGameStore()
+  const handleUse = useCallback((itemId: string) => {
+    useItem(itemId)
+    onClose()
+  }, [useItem, onClose])
+
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          className={`${P}-inventory-overlay`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <motion.div
+            className={`${P}-inventory-sheet`}
+            initial={{ y: '100%' }}
+            animate={{ y: 0 }}
+            exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className={`${P}-inventory-handle`} />
+            <div className={`${P}-inventory-title`}><Gift size={16} weight="fill" /> 我的背包</div>
+            <div className={`${P}-inventory-grid`}>
+              {Object.entries(ITEMS).map(([itemId, item]) => {
+                const count = inventory[itemId] ?? 0
+                return (
+                  <div
+                    key={itemId}
+                    className={`${P}-inventory-item ${count <= 0 ? 'empty' : ''}`}
+                    onClick={() => count > 0 && handleUse(itemId)}
+                  >
+                    <div className={`${P}-inventory-item-icon`}>{item.icon}</div>
+                    <div className={`${P}-inventory-item-name`}>{item.name}</div>
+                    {count > 0 && <div className={`${P}-inventory-item-count`}>x{count}</div>}
+                  </div>
+                )
+              })}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+// ── Tab Dialogue ──
+export default function TabDialogue() {
+  const {
+    messages, isTyping, streamingContent,
+    sendMessage, inventory, choices,
+  } = useGameStore()
+
+  const [input, setInput] = useState('')
+  const [showInventory, setShowInventory] = useState(false)
+  const [choicesOpen, setChoicesOpen] = useState(false)
+  const chatRef = useRef<HTMLDivElement>(null)
+  const prevChoicesRef = useRef<string[]>([])
+
+  // Auto-scroll
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight
+  }, [messages, streamingContent])
+
+  // Auto-collapse when new choices arrive
+  useEffect(() => {
+    const prev = prevChoicesRef.current
+    if (choices.length > 0 && (choices.length !== prev.length || choices[0] !== prev[0])) {
+      setChoicesOpen(false)
+    }
+    prevChoicesRef.current = choices
+  }, [choices])
+
+  const handleSend = useCallback(() => {
+    const text = input.trim()
+    if (!text || isTyping) return
+    setInput('')
+    sendMessage(text)
+  }, [input, isTyping, sendMessage])
+
+  const handleQuickAction = useCallback((action: string) => {
+    if (isTyping) return
+    setChoicesOpen(false)
+    sendMessage(action)
+  }, [isTyping, sendMessage])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+  }, [handleSend])
+
+  const totalItems = Object.values(inventory).reduce((sum, n) => sum + n, 0)
+
+  return (
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      {/* Chat Area */}
+      <div ref={chatRef} className={`${P}-scrollbar`} style={{ flex: 1, overflowY: 'auto', padding: 12 }}>
+        {messages.length === 0 && !isTyping && (
+          <div className={`${P}-bubble-system`} style={{ textAlign: 'center', padding: 20 }}>
+            <div style={{ fontSize: 32, marginBottom: 8 }}>🌹</div>
+            <div style={{ fontWeight: 600, letterSpacing: 2, marginBottom: 8 }}>{STORY_INFO.title}</div>
+            <div style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+              {STORY_INFO.subtitle}<br />在囚笼中找到自己的道路。
+            </div>
+          </div>
+        )}
+
+        {messages.map((msg) => <MessageBubble key={msg.id} msg={msg} />)}
+
+        {/* Streaming bubble */}
+        {isTyping && streamingContent && (
+          <div className={`${P}-avatar-row`}>
+            <div style={{ flex: 1 }}>
+              <div
+                className={`${P}-bubble-npc`}
+                dangerouslySetInnerHTML={{ __html: parseStoryParagraph(streamingContent).narrative }}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Typing indicator */}
+        {isTyping && !streamingContent && (
+          <div className={`${P}-typing-indicator`}><span /><span /><span /></div>
+        )}
+      </div>
+
+      {/* Collapsible Choices Panel */}
+      {choices.length > 0 && (
+        <div className={`${P}-choice-wrap`}>
+          <AnimatePresence mode="wait">
+            {!choicesOpen ? (
+              <motion.button
+                key="collapsed"
+                className={`${P}-choice-toggle`}
+                onClick={() => setChoicesOpen(true)}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                disabled={isTyping}
+              >
+                <GameController size={16} weight="fill" />
+                <span>展开行动选项</span>
+                <span className={`${P}-choice-toggle-badge`}>{choices.length}</span>
+                <CaretUp size={14} />
+              </motion.button>
+            ) : (
+              <motion.div
+                key="expanded"
+                className={`${P}-choice-panel`}
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              >
+                <button className={`${P}-choice-panel-header`} onClick={() => setChoicesOpen(false)}>
+                  <span>选择行动</span>
+                  <span className={`${P}-choice-panel-count`}>{choices.length}项</span>
+                  <CaretDown size={14} />
+                </button>
+                <div className={`${P}-choice-list`}>
+                  {choices.map((action, idx) => (
+                    <motion.button
+                      key={`${action}-${idx}`}
+                      className={`${P}-choice-btn`}
+                      onClick={() => handleQuickAction(action)}
+                      disabled={isTyping}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                    >
+                      <span className={`${P}-choice-idx`}>{String.fromCharCode(65 + idx)}</span>
+                      {action}
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className={`${P}-input-area`}>
+        <button className={`${P}-inventory-btn`} onClick={() => setShowInventory(true)}>
+          <Backpack size={20} />
+          {totalItems > 0 && <span className={`${P}-inventory-btn-badge`}>{totalItems}</span>}
+        </button>
+        <input
+          className={`${P}-input`}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="输入你的行动..."
+          disabled={isTyping}
+        />
+        <button
+          className={`${P}-send-btn`}
+          onClick={handleSend}
+          disabled={isTyping || !input.trim()}
+        >
+          <PaperPlaneRight size={18} weight="fill" />
+        </button>
+      </div>
+
+      {/* Inventory Sheet */}
+      <InventorySheet open={showInventory} onClose={() => setShowInventory(false)} />
+    </div>
+  )
+}
