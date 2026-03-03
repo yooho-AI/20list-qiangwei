@@ -26,7 +26,7 @@ const ENDING_TYPE_MAP: Record<string, { label: string; color: string; icon: stri
 
 // ── Start Screen (3-phase opening) ──
 function StartScreen() {
-  const { setPlayerInfo, initGame, loadGame, hasSave } = useGameStore()
+  const { setPlayerInfo, initGame, loadGame, hasSave, sendMessage } = useGameStore()
   const { toggle: toggleBgm, isPlaying } = useBgm()
   const saved = hasSave()
   const [phase, setPhase] = useState<'awaken' | 'letter' | 'name'>('awaken')
@@ -64,7 +64,9 @@ function StartScreen() {
   const handleBegin = useCallback(() => {
     if (!name.trim()) return
     trackPlayerCreate(name); setPlayerInfo(name); initGame()
-  }, [name, setPlayerInfo, initGame])
+    // 自动发送第一条消息触发 AI 开场
+    setTimeout(() => sendMessage('开始游戏'), 500)
+  }, [name, setPlayerInfo, initGame, sendMessage])
 
   return (
     <div className={`${P}-start`}>

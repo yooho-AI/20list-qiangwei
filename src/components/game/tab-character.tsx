@@ -7,8 +7,9 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Heart, ShieldCheck, Eye, MaskHappy, MagnifyingGlass, X, CaretDown, CaretUp, UserCircle, Users } from '@phosphor-icons/react'
+import { Heart, ShieldCheck, Eye, MaskHappy, MagnifyingGlass, X, CaretDown, CaretUp, UserCircle, Users, ChatCircleDots } from '@phosphor-icons/react'
 import { useGameStore, PLAYER_STAT_METAS, getStatLevel } from '../../lib/store'
+import CharacterChat from './character-chat'
 
 const P = 'qw'
 const STAT_ICONS: Record<string, React.ReactNode> = {
@@ -144,6 +145,7 @@ function CharacterDossier({ charId, onClose }: { charId: string; onClose: () => 
 export default function TabCharacter() {
   const { currentCharacter, characters, characterStats, playerStats, selectCharacter, setActiveTab } = useGameStore()
   const [dossierCharId, setDossierCharId] = useState<string | null>(null)
+  const [chatChar, setChatChar] = useState<string | null>(null)
   const char = currentCharacter ? characters[currentCharacter] : null
   const stats = currentCharacter ? (characterStats[currentCharacter] ?? {}) : {}
 
@@ -207,7 +209,26 @@ export default function TabCharacter() {
             return (
               <div key={c.id} className={`${P}-relation-card ${active ? 'active' : ''}`}
                 onClick={() => { selectCharacter(c.id); setActiveTab('dialogue') }}
-                style={{ flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '12px 8px' }}>
+                style={{ flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '12px 8px', position: 'relative' }}>
+                <button
+                  className={`${P}-header-btn`}
+                  style={{
+                    position: 'absolute',
+                    top: 4,
+                    left: 4,
+                    width: 28,
+                    height: 28,
+                    zIndex: 2,
+                    background: 'rgba(0,0,0,0.5)',
+                    borderRadius: '50%',
+                  }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setChatChar(c.id)
+                  }}
+                >
+                  <ChatCircleDots size={16} weight="fill" />
+                </button>
                 <img className={`${P}-relation-avatar`} src={c.portrait} alt={c.name}
                   style={{ borderColor: c.themeColor, width: 48, height: 48, marginBottom: 6 }}
                   onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
@@ -224,6 +245,16 @@ export default function TabCharacter() {
 
       <AnimatePresence>
         {dossierCharId && <CharacterDossier charId={dossierCharId} onClose={() => setDossierCharId(null)} />}
+      </AnimatePresence>
+
+      {/* Character Chat */}
+      <AnimatePresence>
+        {chatChar && characters[chatChar] && (
+          <CharacterChat
+            charId={chatChar}
+            onClose={() => setChatChar(null)}
+          />
+        )}
       </AnimatePresence>
     </div>
   )
