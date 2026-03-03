@@ -220,6 +220,7 @@ body {
   text-align: center;
   position: relative;
   margin: 12px 0;
+  flex-shrink: 0;
 }
 .qw-bubble-system::before,
 .qw-bubble-system::after {

@@ -159,7 +159,8 @@ export default function CharacterChat({
     <>
       {/* 背景遮罩 */}
       <motion.div
-        className={`${P}-chat-overlay`}
+        className={`${P}-dossier-overlay`}
+        style={{ background: 'rgba(0,0,0,0.5)', overflow: 'visible' }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -168,12 +169,12 @@ export default function CharacterChat({
 
       {/* 聊天面板 */}
       <motion.div
-        className={`${P}-chat-sheet`}
+        className={`${P}-record-sheet`}
         initial={{ x: '100%' }}
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        style={{ display: 'flex', flexDirection: 'column' }}
+        style={{ zIndex: 52, display: 'flex', flexDirection: 'column' }}
       >
         {/* Header */}
         <div className={`${P}-chat-header`}>
